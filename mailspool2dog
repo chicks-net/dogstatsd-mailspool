@@ -1,0 +1,48 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use DataDog::DogStatsd;
+use File::Slurp;
+use Data::Dumper;
+
+#TODO: handle options
+my $debug = 0;
+
+my $dogstatsd = DataDog::DogStatsd->new;
+#$dogstatsd->increment( 'mail.script_runs') unless $debug;
+
+#my ($logfile) = @ARGV;
+my $spooldir = '/var/spool/mail';
+chdir($spooldir) or die "couldn't chdir($spooldir): $!";
+
+# read file names
+opendir(SPOOL,$spooldir) or die "couldn't opendir($spooldir): $!";
+my @spool_files = readdir(SPOOL);
+closedir(SPOOL) or die "couldn't closedir($spooldir): $!";
+
+
+while (1) {
+	foreach my $file (@spool_files) {
+		next if $file =~ /^[.]/; # skip hiddens
+		next unless -r $file;
+		my $now_pretty = `date`;
+		chomp($now_pretty);
+		print "$file ($now_pretty)\n";
+		calculate_stats($file);
+	}
+
+	sleep(60);
+}
+
+
+sub calculate_stats {
+	my($filename) = @_;
+	my $size = -s $filename;
+	my $message_count = `grep '^From ' $filename | wc -l`;
+	chomp($message_count);
+	print "$filename $size $message_count\n";
+
+	$dogstatsd->gauge( "mail.${filename}.bytes", $size ) unless $debug;
+	$dogstatsd->gauge( "mail.${filename}.messages", $message_count ) unless $debug;
+}
