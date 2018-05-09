@@ -21,6 +21,7 @@ opendir(SPOOL,$spooldir) or die "couldn't opendir($spooldir): $!";
 my @spool_files = readdir(SPOOL);
 closedir(SPOOL) or die "couldn't closedir($spooldir): $!";
 
+my %cache;
 
 while (1) {
 	foreach my $file (@spool_files) {
@@ -33,17 +34,29 @@ while (1) {
 		calculate_stats($file);
 	}
 
-	sleep(60);
+	print "about to snooze\n";
+	sleep(60); # TODO: scale to how long it took to do an iteration
 }
 
 
 sub calculate_stats {
 	my($filename) = @_;
-	my $size = -s $filename;
-	my $message_count = `grep '^From ' $filename | wc -l`;
-	chomp($message_count);
-	print "$filename $size $message_count\n";
+	my $mtime = (stat($filename))[9];
+	my ($size,$message_count);
+	if (defined($cache{$filename}->{mtime}) and $mtime == $cache{$filename}->{mtime}) {
+		print "using cache\n";
+		$size = $cache{$filename}->{bytes};
+		$message_count = $cache{$filename}->{messages};
+	} else {
+		$size = -s $filename;
+		$message_count = `grep '^From ' $filename | wc -l`;
+		chomp($message_count);
+		$cache{$filename}->{bytes} = $size;
+		$cache{$filename}->{messages} = $message_count;
+	}
+	print "$filename $size $message_count $mtime\n";
 
+	# TODO: tag user
 	$dogstatsd->gauge( "mail.${filename}.bytes", $size ) unless $debug;
 	$dogstatsd->gauge( "mail.${filename}.messages", $message_count ) unless $debug;
 }
