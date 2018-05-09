@@ -25,6 +25,7 @@ closedir(SPOOL) or die "couldn't closedir($spooldir): $!";
 while (1) {
 	foreach my $file (@spool_files) {
 		next if $file =~ /^[.]/; # skip hiddens
+		next if $file =~ /[.]/; # skip files with any dots in them
 		next unless -r $file;
 		my $now_pretty = `date`;
 		chomp($now_pretty);
