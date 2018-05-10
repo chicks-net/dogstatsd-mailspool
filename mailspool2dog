@@ -53,6 +53,7 @@ sub calculate_stats {
 		chomp($message_count);
 		$cache{$filename}->{bytes} = $size;
 		$cache{$filename}->{messages} = $message_count;
+		$cache{$filename}->{mtime} = $mtime;
 	}
 	print "$filename $size $message_count $mtime\n";
 
