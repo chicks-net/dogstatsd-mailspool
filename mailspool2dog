@@ -28,13 +28,12 @@ while (1) {
 		next if $file =~ /^[.]/; # skip hiddens
 		next if $file =~ /[.]/; # skip files with any dots in them
 		next unless -r $file;
-		my $now_pretty = `date`;
-		chomp($now_pretty);
-		print "$file ($now_pretty)\n";
 		calculate_stats($file);
 	}
 
-	print "about to snooze\n";
+	my $now_pretty = `date`;
+	chomp($now_pretty);
+	print "about to snooze ($now_pretty)\n";
 	sleep(60); # TODO: scale to how long it took to do an iteration
 }
 
@@ -54,8 +53,12 @@ sub calculate_stats {
 		$cache{$filename}->{bytes} = $size;
 		$cache{$filename}->{messages} = $message_count;
 		$cache{$filename}->{mtime} = $mtime;
+
+		my $now_pretty = `date`;
+		chomp($now_pretty);
+		print "$filename ($now_pretty) $size $message_count $mtime\n";
 	}
-	print "$filename $size $message_count $mtime\n";
+	#print "$filename $size $message_count $mtime\n";
 
 	# TODO: tag user
 	$dogstatsd->gauge( "mail.${filename}.bytes", $size ) unless $debug;
